@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#2563eb">
+    <meta name="description" content="Alerta de ubicación con notificaciones">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Alerta Ubicación">
+    <title>Alerta de Ubicación</title>
+    <link rel="manifest" href="data:application/json,{%22name%22:%22Alerta%20de%20Ubicación%22,%22short_name%22:%22Alerta%20Ubicación%22,%22start_url%22:%22./%22,%22display%22:%22fullscreen%22,%22background_color%22:%22%23ffffff%22,%22theme_color%22:%22%232563eb%22,%22icons%22:[{%22src%22:%22data:image/svg+xml,%3Csvg%20xmlns=%27http://www.w3.org/2000/svg%27%20viewBox=%270%200%20192%20192%27%3E%3Crect%20fill=%27%232563eb%27%20width=%27192%27%20height=%27192%27/%3E%3Ctext%20x=%2750%25%27%20y=%2750%25%27%20font-size=%27100%27%20fill=%27white%27%20text-anchor=%27middle%27%20dominant-baseline=%27middle%27%3E📍%3C/text%3E%3C/svg%3E%22,%22sizes%22:%22192x192%22,%22type%22:%22image/svg+xml%22,%22purpose%22:%22any%22}]}">
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html, body {
+            width: 100%;
+            height: 100%;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(to bottom, #eff6ff, #ffffff);
+            min-height: 100vh;
+            padding: 20px;
+            padding-top: max(20px, env(safe-area-inset-top));
+            padding-bottom: max(20px, env(safe-area-inset-bottom));
+        }
+
+        .container {
+            max-width: 500px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-top: 20px;
+        }
+
+        .icon {
+            width: 50px;
+            height: 50px;
+            background: #2563eb;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 15px;
+            font-size: 28px;
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+        }
+
+        h1 {
+            font-size: 28px;
+            color: #111827;
+            margin-bottom: 8px;
+            font-weight: 700;
+        }
+
+        .subtitle {
+            font-size: 14px;
+            color: #6b7280;
+        }
+
+        .status {
+            padding: 16px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            font-size: 13px;
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            font-weight: 500;
+        }
+
+        .status.loading {
+            background: #fef3c7;
+            border: 1px solid #fcd34d;
+            color: #92400e;
+        }
+
+        .status.active {
+            background: #dcfce7;
+            border: 1px solid #86efac;
+            color: #166534;
+        }
+
+        .status.error {
+            background: #fee2e2;
+            border: 1px solid #fca5a5;
+            color: #991b1b;
+        }
+
+        .places {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-bottom: 20px;
+            min-height: 60px;
+        }
+
+        .place-card {
+            background: white;
+            border: 2px solid #e5e7eb;
+            border-radius: 12px;
+            padding: 16px;
+            transition: all 0.3s;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .place-card.alert {
+            background: #fef2f2;
+            border-color: #fca5a5;
+            box-shadow: 0 0 0 3px rgba(252, 165, 165, 0.2);
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.8; }
+        }
+
+        .place-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 12px;
+        }
+
+        .place-info h3 {
+            font-size: 16px;
+            color: #111827;
+            margin-bottom: 4px;
+            font-weight: 600;
+        }
+
+        .place-info p {
+            font-size: 12px;
+            color: #6b7280;
+            line-height: 1.4;
+        }
+
+        .delete-btn {
+            background: none;
+            border: none;
+            color: #9ca3af;
+            cursor: pointer;
+            font-size: 20px;
+            padding: 0;
+            width: 28px;
+            height: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 6px;
+            transition: all 0.2s;
+        }
+
+        .delete-btn:active {
+            background: #f3f4f6;
+            color: #dc2626;
+        }
+
+        .place-distance {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-top: 12px;
+            border-top: 1px solid #f3f4f6;
+        }
+
+        .distance {
+            font-size: 28px;
+            font-weight: 700;
+            color: #2563eb;
+        }
+
+        .place-card.alert .distance {
+            color: #dc2626;
+        }
+
+        .alert-badge {
+            background: #fee2e2;
+            color: #dc2626;
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 700;
+        }
+
+        .add-btn {
+            width: 100%;
+            background: #2563eb;
+            color: white;
+            border: none;
+            padding: 14px;
+            border-radius: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 15px;
+            margin-bottom: 20px;
+            transition: background 0.2s;
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+        }
+
+        .add-btn:active {
+            background: #1d4ed8;
+            transform: scale(0.98);
+        }
+
+        .add-btn:disabled {
+            background: #d1d5db;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+        .search-form {
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        }
+
+        .search-form input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            font-size: 15px;
+            margin-bottom: 12px;
+            font-family: inherit;
+        }
+
+        .search-form input:focus {
+            outline: none;
+            border-color: #2563eb;
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        .search-results {
+            max-height: 200px;
+            overflow-y: auto;
+            margin-bottom: 12px;
+            border-radius: 8px;
+            border: 1px solid #e5e7eb;
+        }
+
+        .search-result {
+            padding: 12px;
+            border-bottom: 1px solid #f3f4f6;
+            cursor: pointer;
+            background: white;
+            transition: background 0.2s;
+        }
+
+        .search-result:last-child {
+            border-bottom: none;
+        }
+
+        .search-result:active {
+            background: #f3f4f6;
+        }
+
+        .search-result-name {
+            font-weight: 500;
+            color: #111827;
+            font-size: 13px;
+            margin-bottom: 4px;
+        }
+
+        .search-result-address {
+            font-size: 11px;
+            color: #6b7280;
+        }
+
+        .close-btn {
+            width: 100%;
+            background: #d1d5db;
+            color: #111827;
+            border: none;
+            padding: 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: background 0.2s;
+        }
+
+        .close-btn:active {
+            background: #9ca3af;
+        }
+
+        .info-box {
+            background: #eff6ff;
+            border: 1px solid #bfdbfe;
+            border-radius: 12px;
+            padding: 14px;
+            font-size: 13px;
+            color: #1e40af;
+            line-height: 1.8;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .install-banner {
+            background: #dbeafe;
+            border: 1px solid #93c5fd;
+            border-radius: 12px;
+            padding: 14px;
+            margin-bottom: 20px;
+            display: none;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .install-banner.show {
+            display: flex;
+        }
+
+        .install-banner button {
+            background: #2563eb;
+            color: white;
+            border: none;
+            padding: 8px 14px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+            font-size: 12px;
+            white-space: nowrap;
+        }
+
+        .install-banner button:active {
+            background: #1d4ed8;
+        }
+
+        .install-banner-close {
+            background: none;
+            border: none;
+            color: #1e40af;
+            cursor: pointer;
+            font-size: 18px;
+            padding: 0;
+            margin-left: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Install Banner -->
+        <div id="installBanner" class="install-banner">
+            <span style="flex: 1; font-size: 12px; font-weight: 500;">📲 Instala como app</span>
+            <button id="installBtn">Instalar</button>
+            <button class="install-banner-close" onclick="document.getElementById('installBanner').classList.remove('show')">✕</button>
+        </div>
+
+        <!-- Header -->
+        <div class="header">
+            <div class="icon">📍</div>
+            <h1>Alerta de Ubicación</h1>
+            <p class="subtitle">Notificación al llegar a tus lugares</p>
+        </div>
+
+        <!-- Status -->
+        <div id="status" class="status loading">
+            ⏳ Activando GPS...
+        </div>
+
+        <!-- Places -->
+        <div id="placesList" class="places"></div>
+
+        <!-- Add Button -->
+        <button id="addBtn" class="add-btn">➕ Agregar Lugar (0/2)</button>
+
+        <!-- Search Form -->
+        <div id="searchForm" class="search-form hidden">
+            <input type="text" id="searchInput" placeholder="Escribe la dirección">
+            <input type="text" id="placeName" placeholder="Nombre del lugar (opcional)">
+            <div id="searchResults" class="search-results"></div>
+            <button class="close-btn">Cerrar</button>
+        </div>
+
+        <!-- Info -->
+        <div class="info-box">
+            📌 Alerta a 50 metros<br>
+            🔔 Sonido y vibración<br>
+            💾 Se guarda en tu dispositivo<br>
+            ⏳ Funciona con app abierta
+        </div>
+    </div>
+
+    <script>
+        const ALERT_DISTANCE = 50;
+        let userLocation = null;
+        let places = [];
+        let watchId = null;
+        let alerted = {};
+        let deferredPrompt = null;
+
+        const statusEl = document.getElementById('status');
+        const placesListEl = document.getElementById('placesList');
+        const addBtn = document.getElementById('addBtn');
+        const searchForm = document.getElementById('searchForm');
+        const searchInput = document.getElementById('searchInput');
+        const placeName = document.getElementById('placeName');
+        const searchResults = document.getElementById('searchResults');
+        const closeFormBtn = searchForm.querySelector('.close-btn');
+        const installBanner = document.getElementById('installBanner');
+        const installBtn = document.getElementById('installBtn');
+
+        // Service Worker
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('data:application/javascript,' + encodeURIComponent(`
+                self.addEventListener('install', (e) => {
+                    e.waitUntil(caches.open('v1').then((cache) => {
+                        return cache.addAll(['/']);
+                    }).catch(() => {}));
+                });
+
+                self.addEventListener('fetch', (e) => {
+                    e.respondWith(
+                        caches.match(e.request).then((response) => {
+                            return response || fetch(e.request).catch(() => {
+                                return new Response('Offline');
+                            });
+                        })
+                    );
+                });
+            `)).catch(() => {});
+        }
+
+        // Install banner
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            installBanner.classList.add('show');
+        });
+
+        installBtn.addEventListener('click', async () => {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                const { outcome } = await deferredPrompt.userChoice;
+                if (outcome === 'accepted') {
+                    installBanner.classList.remove('show');
+                }
+                deferredPrompt = null;
+            }
+        });
+
+        function loadPlaces() {
+            const saved = localStorage.getItem('locations');
+            if (saved) {
+                places = JSON.parse(saved);
+                updateUI();
+            }
+        }
+
+        function savePlaces() {
+            localStorage.setItem('locations', JSON.stringify(places));
+        }
+
+        function startGPS() {
+            if (!navigator.geolocation) {
+                statusEl.textContent = '❌ Tu navegador no soporta GPS';
+                statusEl.className = 'status error';
+                return;
+            }
+
+            watchId = navigator.geolocation.watchPosition(
+                (position) => {
+                    userLocation = {
+                        lat: position.coords.latitude,
+                        lng: position.coords.longitude
+                    };
+                    statusEl.innerHTML = '✅ GPS activo • ' + 
+                        userLocation.lat.toFixed(4) + ', ' + 
+                        userLocation.lng.toFixed(4);
+                    statusEl.className = 'status active';
+                    checkDistances();
+                },
+                (error) => {
+                    statusEl.textContent = '⚠️ Activa permisos de ubicación en tu celular';
+                    statusEl.className = 'status error';
+                    console.error(error);
+                },
+                { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+            );
+        }
+
+        function calculateDistance(lat1, lon1, lat2, lon2) {
+            const R = 6371000;
+            const dLat = ((lat2 - lat1) * Math.PI) / 180;
+            const dLon = ((lon2 - lon1) * Math.PI) / 180;
+            const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) *
+                Math.sin(dLon / 2) * Math.sin(dLon / 2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            return R * c;
+        }
+
+        function checkDistances() {
+            if (!userLocation) return;
+
+            places.forEach((place) => {
+                const distance = calculateDistance(
+                    userLocation.lat, userLocation.lng,
+                    place.lat, place.lng
+                );
+
+                if (distance < ALERT_DISTANCE && !alerted[place.id]) {
+                    triggerAlert(place);
+                    alerted[place.id] = true;
+                } else if (distance >= ALERT_DISTANCE && alerted[place.id]) {
+                    alerted[place.id] = false;
+                }
+            });
+
+            updateUI();
+        }
+
+        function triggerAlert(place) {
+            try {
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const osc = audioContext.createOscillator();
+                const gain = audioContext.createGain();
+                osc.connect(gain);
+                gain.connect(audioContext.destination);
+                osc.frequency.value = 800;
+                gain.gain.setValueAtTime(0.3, audioContext.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 1);
+                osc.start();
+                osc.stop(audioContext.currentTime + 1);
+            } catch (e) {}
+
+            if (navigator.vibrate) {
+                navigator.vibrate([200, 100, 200, 100, 200]);
+            }
+
+            alert('🎯 ¡Llegaste a ' + place.name + '!');
+        }
+
+        async function searchAddress(query) {
+            if (query.length < 3) return;
+            try {
+                const res = await fetch(
+                    `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}`
+                );
+                const data = await res.json();
+                displaySearchResults(data.slice(0, 5));
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
+
+        function displaySearchResults(results) {
+            searchResults.innerHTML = '';
+            results.forEach((result) => {
+                const div = document.createElement('div');
+                div.className = 'search-result';
+                div.innerHTML = `
+                    <div class="search-result-name">${result.display_name.split(',')[0]}</div>
+                    <div class="search-result-address">${result.display_name.split(',').slice(1, 3).join(',')}</div>
+                `;
+                div.onclick = () => addPlace(result);
+                searchResults.appendChild(div);
+            });
+        }
+
+        function addPlace(result) {
+            if (places.length >= 2) {
+                alert('⚠️ Máximo 2 lugares');
+                return;
+            }
+
+            const newPlace = {
+                id: Date.now(),
+                name: placeName.value || result.display_name.split(',')[0],
+                address: result.display_name,
+                lat: parseFloat(result.lat),
+                lng: parseFloat(result.lon)
+            };
+
+            places.push(newPlace);
+            savePlaces();
+            searchInput.value = '';
+            placeName.value = '';
+            searchResults.innerHTML = '';
+            searchForm.classList.add('hidden');
+            updateUI();
+        }
+
+        function removePlace(id) {
+            places = places.filter(p => p.id !== id);
+            savePlaces();
+            updateUI();
+        }
+
+        function getDistanceText(place) {
+            if (!userLocation) return 'Calculando...';
+            const dist = calculateDistance(userLocation.lat, userLocation.lng, place.lat, place.lng);
+            return dist < 1000 ? Math.round(dist) + 'm' : (dist / 1000).toFixed(1) + 'km';
+        }
+
+        function updateUI() {
+            placesListEl.innerHTML = '';
+            places.forEach((place, idx) => {
+                const div = document.createElement('div');
+                div.className = 'place-card';
+                if (alerted[place.id]) div.classList.add('alert');
+                
+                div.innerHTML = `
+                    <div class="place-header">
+                        <div class="place-info">
+                            <h3>Lugar ${idx + 1}: ${place.name}</h3>
+                            <p>${place.address}</p>
+                        </div>
+                        <button class="delete-btn">✕</button>
+                    </div>
+                    <div class="place-distance">
+                        <div class="distance">${getDistanceText(place)}</div>
+                        ${alerted[place.id] ? '<div class="alert-badge">¡ALERTA!</div>' : ''}
+                    </div>
+                `;
+
+                div.querySelector('.delete-btn').onclick = () => removePlace(place.id);
+                placesListEl.appendChild(div);
+            });
+
+            addBtn.textContent = `➕ Agregar Lugar (${places.length}/2)`;
+            addBtn.disabled = places.length >= 2;
+        }
+
+        addBtn.addEventListener('click', () => {
+            searchForm.classList.toggle('hidden');
+            if (!searchForm.classList.contains('hidden')) {
+                searchInput.focus();
+            }
+        });
+
+        closeFormBtn.addEventListener('click', () => {
+            searchForm.classList.add('hidden');
+        });
+
+        searchInput.addEventListener('input', (e) => {
+            searchAddress(e.target.value);
+        });
+
+        setInterval(checkDistances, 1000);
+
+        loadPlaces();
+        startGPS();
+        updateUI();
+    </script>
+</body>
+</html>
